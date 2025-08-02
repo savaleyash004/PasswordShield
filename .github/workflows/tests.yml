@@ -1,0 +1,42 @@
+name: Run tests
+
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.8.0
+        with:
+          mongodb-version: 5.0.5
+          mongodb-replica-set: test-rs
+          mongodb-port: 27017
+
+      - name: Install dependencies
+        run: pip install -r dev-requirements.txt
+
+      - name: Build package
+        run: pip install -e .
+
+      - name: Generate kaggle.json
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          MONGODB_CONN_STRING: ${{ secrets.MONGODB_CONN_STRING }}
+        # run: python src/utils/generate_kaggle_keys.py
+        run: python src/utils/build_model.py
+
+      - name: Run tests
+        env:
+          MONGODB_CONN_STRING: ${{ secrets.MONGODB_CONN_STRING }}
+        run: pytest src/test
